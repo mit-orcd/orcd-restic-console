@@ -1,0 +1,129 @@
+{% extends "layout.html" %}
+{% block content %}
+  <section class="panel">
+    <h2>Filesystems</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fs in filesystems %}
+        <tr data-fs-id="{{ fs.id }}">
+          <td>{{ fs.id }}</td>
+          <td>{{ fs.name }}</td>
+          <td>{{ fs.source_path }}</td>
+          <td>{{ fs.destination_id }}</td>
+          <td>
+            <button class="btn btn-small" data-action="snapshots">Snapshots</button>
+            <button class="btn btn-small" data-action="backup">Backup now</button>
+            <button class="btn btn-small danger" data-action="delete-fs">Remove</button>
+            <div class="restore-form">
+              <input type="text" name="snapshot_id" placeholder="Snapshot ID">
+              <input type="text" name="target_path" value="{{ restore_root }}/{{ fs.id }}" placeholder="Restore target">
+              <button class="btn btn-small" data-action="restore">Restore</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-row">
+      <h3>Add filesystem</h3>
+      <input id="fs-id" type="text" placeholder="id">
+      <input id="fs-name" type="text" placeholder="name">
+      <input id="fs-source" type="text" placeholder="/path/to/source">
+      <input id="fs-destination" type="text" placeholder="destination id">
+      <input id="fs-repo-suffix" type="text" placeholder="repo suffix (optional)">
+      <button class="btn" id="add-fs">Add filesystem</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Destinations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Details</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dest in destinations %}
+        <tr data-dest-id="{{ dest.id }}">
+          <td>{{ dest.id }}</td>
+          <td>{{ dest.name }}</td>
+          <td>{{ dest.type }}</td>
+          <td>
+            {% if dest.type == "local" %}
+              {{ dest.path }}
+            {% else %}
+              {{ dest.bucket }} / {{ dest.prefix or "" }} ({{ dest.endpoint or "" }})
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-small danger" data-action="delete-dest">Remove</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-row">
+      <h3>Add destination</h3>
+      <input id="dest-id" type="text" placeholder="id">
+      <input id="dest-name" type="text" placeholder="name">
+      <select id="dest-type">
+        <option value="local">local</option>
+        <option value="s3">s3</option>
+      </select>
+      <input id="dest-path" type="text" placeholder="/mnt/backup_pool (local)">
+      <input id="dest-bucket" type="text" placeholder="bucket (s3)">
+      <input id="dest-prefix" type="text" placeholder="prefix (s3)">
+      <input id="dest-endpoint" type="text" placeholder="endpoint (s3)">
+      <input id="dest-region" type="text" placeholder="region (s3)">
+      <button class="btn" id="add-dest">Add destination</button>
+      <button class="btn" id="create-bucket">Create S3 bucket</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Recent Jobs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Filesystem</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td>{{ job.id }}</td>
+          <td>{{ job.type }}</td>
+          <td>{{ job.filesystem_id }}</td>
+          <td>{{ job.status }}</td>
+          <td>{{ job.created_at }}</td>
+          <td>{{ job.log_path }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Snapshots</h2>
+    <pre id="snapshots-output">Select a filesystem and click Snapshots.</pre>
+  </section>
+{% endblock %}

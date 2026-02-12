@@ -1,0 +1,18 @@
+destinations:
+  - id: "local-pool"
+    name: "Local pool backup"
+    type: "local"
+    path: "/mnt/backup_pool"
+  - id: "s3-archive"
+    name: "S3 archive"
+    type: "s3"
+    bucket: "my-backup-bucket"
+    prefix: "restic"
+    endpoint: "s3.amazonaws.com"
+    region: "us-east-1"
+filesystems:
+  - id: "pool005"
+    name: "pool005"
+    source_path: "/data2/pool/005"
+    destination_id: "local-pool"
+    repo_suffix: "pool005"

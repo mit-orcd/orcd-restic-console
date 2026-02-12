@@ -1,0 +1,19 @@
+app:
+  host: "0.0.0.0"
+  port: 8080
+  secret_key: "change-me"
+  max_jobs: 4
+restic:
+  binary: "/usr/local/bin/restic"
+  password_file: "/root/.backup_pass"
+  compression: "auto"
+  keep_daily: 14
+  keep_weekly: 2
+paths:
+  log_dir: "./data/logs"
+  job_store: "./data/job_history.json"
+  restore_root: "/mnt/restores"
+aws:
+  binary: "/usr/local/bin/aws"
+  default_region: "us-east-1"
+  default_endpoint: "s3.amazonaws.com"
