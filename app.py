@@ -59,6 +59,19 @@ def _require_restore_root(target_path: str) -> str:
     return str(target)
 
 
+def _allow_restore_target(target_path: str) -> str:
+    """Allow target under restore_root or under default_restore_target (/tmp)."""
+    target = Path(target_path).resolve()
+    allowed = [
+        Path(app_config.restore_root).resolve(),
+        Path(app_config.default_restore_target).resolve(),
+    ]
+    for root in allowed:
+        if root in target.parents or target == root:
+            return str(target)
+    raise ValueError("Restore target must be inside restore_root or default_restore_target")
+
+
 def _get_filesystem(fs_id: str) -> dict:
     data = store.load_backups()
     fs_entry = store.find_filesystem(data["filesystems"], fs_id)
@@ -109,6 +122,37 @@ def _job_restore(fs_id: str, fs_entry: dict, dest_entry: dict, snapshot_id: str,
     return {"repo": repo, "snapshot": snapshot_id, "target": target_path}
 
 
+def _recovery_repo_root(root_key: str) -> Path:
+    if root_key == "user_home":
+        return Path(app_config.backup_user_home)
+    if root_key == "software":
+        return Path(app_config.backup_software)
+    abort(400, "root must be user_home or software")
+
+
+def _job_recovery_restore(
+    repo: str,
+    snapshot_id: str,
+    target_path: str,
+    include_paths: list,
+    exclude_paths: list,
+) -> Dict[str, Any]:
+    log_path = Path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    target_path = _allow_restore_target(target_path)
+    restic_service.unlock(repo, log_path)
+    code, _, _ = restic_service.restore(
+        repo,
+        snapshot_id,
+        target_path,
+        log_path,
+        include_paths=include_paths or None,
+        exclude_paths=exclude_paths or None,
+    )
+    if code != 0:
+        raise RuntimeError("restic restore failed")
+    return {"repo": repo, "snapshot": snapshot_id, "target": target_path}
+
+
 @app.route("/")
 def index() -> str:
     data = store.load_backups()
@@ -119,6 +163,7 @@ def index() -> str:
         destinations=data["destinations"],
         jobs=sorted(jobs.values(), key=lambda item: item["created_at"], reverse=True)[:25],
         restore_root=app_config.restore_root,
+        default_restore_target=app_config.default_restore_target,
     )
 
 
@@ -248,6 +293,100 @@ def run_restore(fs_id: str) -> Any:
 @app.route("/api/jobs", methods=["GET"])
 def list_jobs() -> Any:
     return jsonify(job_manager.list_jobs())
+
+
+@app.route("/api/recovery/repos", methods=["GET"])
+def list_recovery_repos() -> Any:
+    root_key = request.args.get("root")
+    if not root_key:
+        abort(400, "root is required (user_home or software)")
+    base = _recovery_repo_root(root_key)
+    if not base.exists() or not base.is_dir():
+        return jsonify([])
+    repos = []
+    for p in sorted(base.iterdir()):
+        if p.is_dir():
+            repos.append({"name": p.name, "path": str(p)})
+    return jsonify(repos)
+
+
+@app.route("/api/recovery/snapshots", methods=["GET"])
+def list_recovery_snapshots() -> Any:
+    repo = request.args.get("repo")
+    if not repo:
+        abort(400, "repo path is required")
+    repo_path = Path(repo)
+    if not repo_path.exists() or not repo_path.is_dir():
+        abort(404, "repo path not found")
+    log_path = _log_path(repo_path.name, "snapshots")
+    code, stdout, _ = restic_service.snapshots(repo, log_path)
+    if code != 0:
+        abort(500, "failed to load snapshots")
+    return jsonify(json.loads(stdout))
+
+
+@app.route("/api/recovery/ls", methods=["GET"])
+def list_recovery_ls() -> Any:
+    repo = request.args.get("repo")
+    snapshot = request.args.get("snapshot")
+    if not repo or not snapshot:
+        abort(400, "repo and snapshot are required")
+    log_path = _log_path(Path(repo).name, "ls")
+    code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
+    if code != 0:
+        abort(500, stderr or "failed to list snapshot")
+    # restic ls prints a header line then one path per line (paths start with /)
+    paths = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if line and (line.startswith("/") or line == "/"):
+            paths.append(line)
+    return jsonify({"paths": paths})
+
+
+@app.route("/api/recovery/verify", methods=["POST"])
+def verify_recovery() -> Any:
+    payload = request.get_json(force=True)
+    repo = payload.get("repo")
+    snapshot = payload.get("snapshot_id")
+    target_path = payload.get("target_path")
+    include_paths = payload.get("include_paths") or []
+    exclude_paths = payload.get("exclude_paths") or []
+    if not repo or not snapshot or not target_path:
+        abort(400, "repo, snapshot_id and target_path are required")
+    try:
+        _allow_restore_target(target_path)
+    except ValueError as e:
+        abort(400, str(e))
+    return jsonify({
+        "repo": repo,
+        "snapshot_id": snapshot,
+        "target_path": target_path,
+        "include_paths": include_paths,
+        "exclude_paths": exclude_paths,
+        "summary": f"Restore {snapshot} from {repo} to {target_path}"
+        + (f" (include: {len(include_paths)} path(s))" if include_paths else "")
+        + (f" (exclude: {len(exclude_paths)} path(s))" if exclude_paths else ""),
+    })
+
+
+@app.route("/api/recovery/restore", methods=["POST"])
+def run_recovery_restore() -> Any:
+    payload = request.get_json(force=True)
+    repo = payload.get("repo")
+    snapshot_id = payload.get("snapshot_id")
+    target_path = payload.get("target_path")
+    include_paths = payload.get("include_paths") or []
+    exclude_paths = payload.get("exclude_paths") or []
+    if not repo or not snapshot_id or not target_path:
+        abort(400, "repo, snapshot_id and target_path are required")
+    job_id = job_manager.submit(
+        "recovery_restore",
+        Path(repo).name,
+        Path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log",
+        lambda: _job_recovery_restore(repo, snapshot_id, target_path, include_paths, exclude_paths),
+    )
+    return jsonify({"job_id": job_id})
 
 
 @app.route("/api/s3/buckets", methods=["POST"])

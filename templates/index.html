@@ -1,5 +1,62 @@
 {% extends "layout.html" %}
 {% block content %}
+  <section class="panel restore-panel">
+    <h2>Restore</h2>
+    <div class="restore-form-grid">
+      <div class="form-group">
+        <label for="restore-from">Restore from</label>
+        <select id="restore-from">
+          <option value="user_home">User Home repo</option>
+          <option value="software">Software</option>
+        </select>
+      </div>
+      <div class="form-group" id="repo-select-group">
+        <label for="restore-repo">Repository</label>
+        <select id="restore-repo">
+          <option value="">— Select repository —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="restore-snapshot">Snapshot</label>
+        <select id="restore-snapshot">
+          <option value="">— Select snapshot —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="restore-target">Target directory</label>
+        <input type="text" id="restore-target" value="{{ default_restore_target }}" placeholder="{{ default_restore_target }}">
+      </div>
+    </div>
+    <div class="form-group filter-mode">
+      <label>Include / Exclude</label>
+      <select id="restore-filter-mode">
+        <option value="none">None</option>
+        <option value="include">Include only these paths</option>
+        <option value="exclude">Exclude these paths</option>
+      </select>
+      <button type="button" class="btn btn-small" id="restore-load-files">Load file list</button>
+    </div>
+    <div class="file-list-container" id="restore-file-list-container" style="display: none;">
+      <label>Files in snapshot (use to copy paths for Include/Exclude)</label>
+      <div class="file-list-scroll" id="restore-file-list"></div>
+    </div>
+    <div class="form-group include-exclude-paths" id="restore-include-exclude" style="display: none;">
+      <div class="paths-column">
+        <label for="restore-include-paths">Include paths (one per line)</label>
+        <textarea id="restore-include-paths" rows="3" placeholder="/path/inside/snapshot"></textarea>
+      </div>
+      <div class="paths-column">
+        <label for="restore-exclude-paths">Exclude paths (one per line)</label>
+        <textarea id="restore-exclude-paths" rows="3" placeholder="/path/inside/snapshot"></textarea>
+      </div>
+    </div>
+    <div class="verify-summary" id="restore-verify-summary" style="display: none;"></div>
+    <div class="restore-actions">
+      <button type="button" class="btn" id="restore-verify">Verify</button>
+      <button type="button" class="btn" id="restore-run">Restore</button>
+    </div>
+  </section>
+
   <section class="panel">
     <h2>Filesystems</h2>
     <table>

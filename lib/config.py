@@ -20,6 +20,9 @@ class AppConfig:
     log_dir: str
     job_store: str
     restore_root: str
+    backup_user_home: str
+    backup_software: str
+    default_restore_target: str
     aws_binary: str
     aws_default_region: str
     aws_default_endpoint: str
@@ -61,6 +64,9 @@ class ConfigStore:
             log_dir=paths.get("log_dir", "./data/logs"),
             job_store=paths.get("job_store", "./data/job_history.json"),
             restore_root=paths.get("restore_root", "/mnt/restores"),
+            backup_user_home=paths.get("backup_user_home", "/mnt/backup_home/home3"),
+            backup_software=paths.get("backup_software", "/mnt/backup_software"),
+            default_restore_target=paths.get("default_restore_target", "/tmp"),
             aws_binary=aws.get("binary", "/usr/local/bin/aws"),
             aws_default_region=aws.get("default_region", "us-east-1"),
             aws_default_endpoint=aws.get("default_endpoint", "s3.amazonaws.com"),

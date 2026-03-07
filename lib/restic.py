@@ -2,7 +2,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 
 @dataclass
@@ -87,11 +87,30 @@ class ResticService:
         ]
         return run_command(args, log_path)
 
-    def restore(self, repo: str, snapshot: str, target_path: str, log_path: Path) -> Tuple[int, str, str]:
+    def ls(self, repo: str, snapshot: str, log_path: Path) -> Tuple[int, str, str]:
+        """List files in snapshot. Stdout is one path per line."""
+        args = self._base_args(repo) + ["ls", snapshot]
+        return run_command(args, log_path)
+
+    def restore(
+        self,
+        repo: str,
+        snapshot: str,
+        target_path: str,
+        log_path: Path,
+        include_paths: Optional[Sequence[str]] = None,
+        exclude_paths: Optional[Sequence[str]] = None,
+    ) -> Tuple[int, str, str]:
         args = self._base_args(repo) + [
             "restore",
             snapshot,
             "--target",
             target_path,
         ]
+        if include_paths:
+            for p in include_paths:
+                args.extend(["--include", p])
+        if exclude_paths:
+            for p in exclude_paths:
+                args.extend(["--exclude", p])
         return run_command(args, log_path)
