@@ -127,20 +127,35 @@ const restoreVerifySummary = document.getElementById("restore-verify-summary");
 const restoreVerifyBtn = document.getElementById("restore-verify");
 const restoreRunBtn = document.getElementById("restore-run");
 const restoreCancelBtn = document.getElementById("restore-cancel");
+const restoreRepoType = document.getElementById("restore-repo-type");
+
+let recoveryRootPath = "";
 
 function getDefaultRestoreTargetBase() {
   return restoreTarget.value.trim() || restoreTarget.placeholder || "/tmp";
 }
 
+function getEffectiveRepo() {
+  const typed = restoreRepoType?.value.trim();
+  if (typed) {
+    const base = recoveryRootPath.replace(/\/+$/, "");
+    return base ? `${base}/${typed}` : "";
+  }
+  return restoreRepo?.value || "";
+}
+
 restoreFrom?.addEventListener("change", async () => {
   const root = restoreFrom.value;
   restoreRepo.innerHTML = "<option value=\"\">— Select repository —</option>";
+  restoreRepoType.value = "";
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreVerifySummary.style.display = "none";
+  recoveryRootPath = "";
   if (!root) return;
   try {
-    const repos = await request(`/api/recovery/repos?root=${encodeURIComponent(root)}`);
-    repos.forEach((r) => {
+    const data = await request(`/api/recovery/repos?root=${encodeURIComponent(root)}`);
+    recoveryRootPath = data.root || "";
+    (data.repos || data).forEach((r) => {
       const opt = document.createElement("option");
       opt.value = r.path;
       opt.textContent = r.name;
@@ -151,16 +166,36 @@ restoreFrom?.addEventListener("change", async () => {
   }
 });
 
-restoreRepo?.addEventListener("change", async () => {
-  const repo = restoreRepo.value;
+function updateTargetFromRepo(repoPath) {
   const base = getDefaultRestoreTargetBase().replace(/\/+$/, "");
-  const repoName = repo ? repo.split("/").filter(Boolean).pop() : "";
+  const repoName = repoPath ? repoPath.split("/").filter(Boolean).pop() : "";
   restoreTarget.value = repoName ? `${base}/${repoName}` : base;
+}
+
+restoreRepo?.addEventListener("change", () => {
+  if (restoreRepoType?.value.trim()) return;
+  const repo = restoreRepo.value;
+  updateTargetFromRepo(repo);
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreFileListContainer.style.display = "none";
   restoreFileList.innerHTML = "";
   restoreVerifySummary.style.display = "none";
   if (!repo) return;
+  loadSnapshotsForRepo(repo);
+});
+
+restoreRepoType?.addEventListener("blur", () => {
+  const repo = getEffectiveRepo();
+  if (!repo) return;
+  updateTargetFromRepo(repo);
+});
+
+restoreRepoType?.addEventListener("input", () => {
+  restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
+  restoreVerifySummary.style.display = "none";
+});
+
+async function loadSnapshotsForRepo(repo) {
   try {
     const data = await request(`/api/recovery/snapshots?repo=${encodeURIComponent(repo)}`);
     const list = Array.isArray(data) ? data : (data.snapshots || []);
@@ -179,6 +214,11 @@ restoreRepo?.addEventListener("change", async () => {
   } catch (err) {
     alert(err.message);
   }
+}
+
+document.getElementById("restore-snapshot")?.addEventListener("focus", () => {
+  const repo = getEffectiveRepo();
+  if (repo && restoreSnapshot.options.length <= 1) loadSnapshotsForRepo(repo);
 });
 
 restoreFilterMode?.addEventListener("change", () => {
@@ -190,10 +230,10 @@ restoreFilterMode?.addEventListener("change", () => {
 });
 
 restoreLoadFiles?.addEventListener("click", async () => {
-  const repo = restoreRepo.value;
+  const repo = getEffectiveRepo();
   const snapshot = restoreSnapshot.value;
   if (!repo || !snapshot) {
-    alert("Select repository and snapshot first.");
+    alert("Select or type repository and select snapshot first.");
     return;
   }
   restoreFileList.innerHTML = "<span class=\"loading\">Loading…</span>";
@@ -227,11 +267,11 @@ restoreLoadFiles?.addEventListener("click", async () => {
 });
 
 restoreVerifyBtn?.addEventListener("click", async () => {
-  const repo = restoreRepo.value;
+  const repo = getEffectiveRepo();
   const snapshot = restoreSnapshot.value;
   const targetPath = restoreTarget.value.trim();
   if (!repo || !snapshot || !targetPath) {
-    alert("Select repository, snapshot, and target directory.");
+    alert("Select or type repository, snapshot, and target directory.");
     return;
   }
   const includePaths = restoreIncludePaths.value
@@ -273,11 +313,11 @@ restoreVerifyBtn?.addEventListener("click", async () => {
 });
 
 restoreRunBtn?.addEventListener("click", async () => {
-  const repo = restoreRepo.value;
+  const repo = getEffectiveRepo();
   const snapshot = restoreSnapshot.value;
   const targetPath = restoreTarget.value.trim();
   if (!repo || !snapshot || !targetPath) {
-    alert("Select repository, snapshot, and target directory.");
+    alert("Select or type repository, snapshot, and target directory.");
     return;
   }
   const includePaths = restoreIncludePaths.value
@@ -311,6 +351,7 @@ restoreRunBtn?.addEventListener("click", async () => {
 restoreCancelBtn?.addEventListener("click", () => {
   restoreFrom.value = "user_home";
   restoreRepo.innerHTML = "<option value=\"\">— Select repository —</option>";
+  restoreRepoType.value = "";
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreTarget.value = restoreTarget.placeholder || "/tmp";
   restoreFilterMode.value = "none";

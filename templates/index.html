@@ -6,7 +6,7 @@
       <div class="form-group">
         <label for="restore-from">Restore from</label>
         <select id="restore-from">
-          <option value="user_home">User Home repo</option>
+          <option value="user_home">User Homes</option>
           <option value="software">Software</option>
         </select>
       </div>
@@ -15,6 +15,8 @@
         <select id="restore-repo">
           <option value="">— Select repository —</option>
         </select>
+        <label for="restore-repo-type" class="repo-type-label">Or type repository name</label>
+        <input type="text" id="restore-repo-type" placeholder="e.g. raphael4" autocomplete="off">
       </div>
       <div class="form-group">
         <label for="restore-snapshot">Snapshot</label>
@@ -60,26 +62,34 @@
 
   <section class="panel">
     <h2>Recent Jobs</h2>
+    <p class="panel-description">Last 10 restore jobs (from restore log).</p>
     <table>
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Type</th>
-          <th>Filesystem</th>
+          <th>Time</th>
+          <th>Repo</th>
+          <th>Snapshot</th>
+          <th>Target</th>
           <th>Status</th>
-          <th>Created</th>
-          <th>Log</th>
         </tr>
       </thead>
       <tbody>
-        {% for job in jobs %}
+        {% for job in restore_jobs %}
         <tr>
-          <td>{{ job.id }}</td>
-          <td>{{ job.type }}</td>
-          <td>{{ job.filesystem_id }}</td>
-          <td>{{ job.status }}</td>
-          <td>{{ job.created_at }}</td>
-          <td>{{ job.log_path }}</td>
+          <td>{{ job.time }}</td>
+          <td>{{ job.repo }}</td>
+          <td>{{ job.snapshot }}</td>
+          <td>{{ job.target }}</td>
+          <td class="status-{{ job.status }}">{{ job.status }}</td>
+        </tr>
+        {% if job.message %}
+        <tr class="job-message-row">
+          <td colspan="5">{{ job.message }}</td>
+        </tr>
+        {% endif %}
+        {% else %}
+        <tr>
+          <td colspan="5">No restore jobs recorded yet.</td>
         </tr>
         {% endfor %}
       </tbody>

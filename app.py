@@ -1,8 +1,9 @@
 import json
 import os
+import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from flask import Flask, abort, jsonify, render_template, request
 
@@ -130,6 +131,54 @@ def _recovery_repo_root(root_key: str) -> Path:
     abort(400, "root must be user_home or software")
 
 
+def _restore_log_path() -> Path:
+    return Path(app_config.restore_log)
+
+
+def _append_restore_log(
+    repo: str,
+    snapshot_id: str,
+    target_path: str,
+    include_paths: list,
+    exclude_paths: list,
+    status: str,
+    message: str = "",
+) -> None:
+    log_file = _restore_log_path()
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "repo": repo,
+        "snapshot": snapshot_id,
+        "target": target_path,
+        "include_paths": include_paths or [],
+        "exclude_paths": exclude_paths or [],
+        "status": status,
+        "message": message,
+    }
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _read_restore_log_last_n(n: int = 10) -> List[Dict[str, Any]]:
+    log_file = _restore_log_path()
+    if not log_file.exists():
+        return []
+    lines = log_file.read_text(encoding="utf-8").strip().splitlines()
+    entries = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    # Newest last in file, so reverse and take first n
+    entries.reverse()
+    return entries[:n]
+
+
 def _job_recovery_restore(
     repo: str,
     snapshot_id: str,
@@ -139,30 +188,56 @@ def _job_recovery_restore(
 ) -> Dict[str, Any]:
     log_path = Path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log"
     target_path = _allow_restore_target(target_path)
-    restic_service.unlock(repo, log_path)
-    code, _, _ = restic_service.restore(
-        repo,
-        snapshot_id,
-        target_path,
-        log_path,
-        include_paths=include_paths or None,
-        exclude_paths=exclude_paths or None,
-    )
-    if code != 0:
-        raise RuntimeError("restic restore failed")
-    return {"repo": repo, "snapshot": snapshot_id, "target": target_path}
+    logged = False
+    try:
+        restic_service.unlock(repo, log_path)
+        code, _, stderr = restic_service.restore(
+            repo,
+            snapshot_id,
+            target_path,
+            log_path,
+            include_paths=include_paths or None,
+            exclude_paths=exclude_paths or None,
+        )
+        if code != 0:
+            msg = stderr or "restic restore failed"
+            _append_restore_log(
+                repo, snapshot_id, target_path, include_paths, exclude_paths, "failure", msg
+            )
+            logged = True
+            raise RuntimeError(msg)
+        _append_restore_log(
+            repo, snapshot_id, target_path, include_paths, exclude_paths, "success"
+        )
+        return {"repo": repo, "snapshot": snapshot_id, "target": target_path}
+    except Exception:
+        if not logged:
+            _append_restore_log(
+                repo,
+                snapshot_id,
+                target_path,
+                include_paths,
+                exclude_paths,
+                "failure",
+                str(sys.exc_info()[1]),
+            )
+        raise
 
 
 @app.route("/")
 def index() -> str:
-    data = store.load_backups()
-    jobs = job_manager.list_jobs()
+    restore_jobs = _read_restore_log_last_n(10)
+    # Normalize keys for template (ts -> time, snapshot -> snapshot, status, message)
+    for j in restore_jobs:
+        j.setdefault("time", j.get("ts", ""))
+        j.setdefault("repo", j.get("repo", ""))
+        j.setdefault("snapshot", j.get("snapshot", ""))
+        j.setdefault("target", j.get("target", ""))
+        j.setdefault("status", j.get("status", ""))
+        j.setdefault("message", j.get("message", ""))
     return render_template(
         "index.html",
-        filesystems=data["filesystems"],
-        destinations=data["destinations"],
-        jobs=sorted(jobs.values(), key=lambda item: item["created_at"], reverse=True)[:25],
-        restore_root=app_config.restore_root,
+        restore_jobs=restore_jobs,
         default_restore_target=app_config.default_restore_target,
     )
 
@@ -302,12 +377,12 @@ def list_recovery_repos() -> Any:
         abort(400, "root is required (user_home or software)")
     base = _recovery_repo_root(root_key)
     if not base.exists() or not base.is_dir():
-        return jsonify([])
+        return jsonify({"root": str(base), "repos": []})
     repos = []
     for p in sorted(base.iterdir()):
         if p.is_dir():
             repos.append({"name": p.name, "path": str(p)})
-    return jsonify(repos)
+    return jsonify({"root": str(base), "repos": repos})
 
 
 @app.route("/api/recovery/snapshots", methods=["GET"])

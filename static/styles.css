@@ -214,3 +214,32 @@ pre {
 .restore-actions .btn + .btn {
   margin-left: 0;
 }
+
+.restore-panel .repo-type-label {
+  margin-top: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.panel-description {
+  margin: -4px 0 12px;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.status-success {
+  color: #059669;
+  font-weight: 500;
+}
+
+.status-failure {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.job-message-row td {
+  font-size: 0.85rem;
+  color: #6b7280;
+  padding-left: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}

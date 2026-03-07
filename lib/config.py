@@ -23,6 +23,7 @@ class AppConfig:
     backup_user_home: str
     backup_software: str
     default_restore_target: str
+    restore_log: str
     aws_binary: str
     aws_default_region: str
     aws_default_endpoint: str
@@ -67,6 +68,7 @@ class ConfigStore:
             backup_user_home=paths.get("backup_user_home", "/mnt/backup_home/home3"),
             backup_software=paths.get("backup_software", "/mnt/backup_software/software"),
             default_restore_target=paths.get("default_restore_target", "/tmp"),
+            restore_log=paths.get("restore_log", "/db/restic/log/restore.log"),
             aws_binary=aws.get("binary", "/usr/local/bin/aws"),
             aws_default_region=aws.get("default_region", "us-east-1"),
             aws_default_endpoint=aws.get("default_endpoint", "s3.amazonaws.com"),

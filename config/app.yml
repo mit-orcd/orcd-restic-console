@@ -17,6 +17,7 @@ paths:
   backup_user_home: "/mnt/backup_home/home3"
   backup_software: "/mnt/backup_software/software"
   default_restore_target: "/tmp"
+  restore_log: "/db/restic/log/restore.log"
 aws:
   binary: "/usr/local/bin/aws"
   default_region: "us-east-1"
