@@ -126,6 +126,7 @@ const restoreExcludePaths = document.getElementById("restore-exclude-paths");
 const restoreVerifySummary = document.getElementById("restore-verify-summary");
 const restoreVerifyBtn = document.getElementById("restore-verify");
 const restoreRunBtn = document.getElementById("restore-run");
+const restoreCancelBtn = document.getElementById("restore-cancel");
 
 function getDefaultRestoreTargetBase() {
   return restoreTarget.value.trim() || restoreTarget.placeholder || "/tmp";
@@ -305,6 +306,22 @@ restoreRunBtn?.addEventListener("click", async () => {
   } catch (err) {
     alert(err.message);
   }
+});
+
+restoreCancelBtn?.addEventListener("click", () => {
+  restoreFrom.value = "user_home";
+  restoreRepo.innerHTML = "<option value=\"\">— Select repository —</option>";
+  restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
+  restoreTarget.value = restoreTarget.placeholder || "/tmp";
+  restoreFilterMode.value = "none";
+  restoreIncludeExclude.style.display = "none";
+  restoreIncludePaths.value = "";
+  restoreExcludePaths.value = "";
+  restoreFileListContainer.style.display = "none";
+  restoreFileList.innerHTML = "";
+  restoreVerifySummary.style.display = "none";
+  restoreVerifySummary.innerHTML = "";
+  restoreFrom.dispatchEvent(new Event("change"));
 });
 
 // Load repos on page load for initial "Restore from" value

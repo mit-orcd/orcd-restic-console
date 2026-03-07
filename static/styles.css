@@ -87,6 +87,10 @@ select {
   background: #dc2626;
 }
 
+.btn.btn-cancel {
+  background: #6b7280;
+}
+
 .restore-form {
   margin-top: 8px;
   display: grid;

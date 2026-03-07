@@ -15,7 +15,7 @@ paths:
   restore_root: "/mnt/restores"
   # Root dirs for recovery panel (restic repos)
   backup_user_home: "/mnt/backup_home/home3"
-  backup_software: "/mnt/backup_software"
+  backup_software: "/mnt/backup_software/software"
   default_restore_target: "/tmp"
 aws:
   binary: "/usr/local/bin/aws"
