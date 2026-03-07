@@ -2,7 +2,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -17,8 +17,8 @@ class ResticConfig:
 def run_command(
     args: List[str],
     log_path: Path,
-    cwd: str | None = None,
-    env: dict | None = None,
+    cwd: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, str, str]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as handle:
