@@ -388,3 +388,38 @@ restoreCancelBtn?.addEventListener("click", () => {
     console.error(err);
   }
 })();
+
+// Theme toggle (light / dark panel)
+(function () {
+  const STORAGE_KEY = "backup-panel-theme";
+  const DARK = "dark";
+  const LIGHT = "light";
+
+  function getStored() {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || LIGHT;
+    } catch (e) {
+      return LIGHT;
+    }
+  }
+
+  function applyTheme(theme) {
+    document.body.classList.toggle("theme-dark", theme === DARK);
+  }
+
+  function setTheme(theme) {
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch (e) {}
+    applyTheme(theme);
+  }
+
+  const btn = document.getElementById("theme-toggle");
+  if (btn) {
+    applyTheme(getStored());
+    btn.addEventListener("click", function () {
+      const next = document.body.classList.contains("theme-dark") ? LIGHT : DARK;
+      setTheme(next);
+    });
+  }
+})();
