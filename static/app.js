@@ -364,6 +364,7 @@ restoreCancelBtn?.addEventListener("click", () => {
   restoreVerifySummary.style.display = "none";
   restoreVerifySummary.innerHTML = "";
   restoreFrom.dispatchEvent(new Event("change"));
+  window.location.reload();
 });
 
 // Load recovery roots for "Restore from" dropdown, then load repos for first option

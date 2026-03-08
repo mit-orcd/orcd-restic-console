@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
+  <p class="signed-in-notice"><a href="{{ url_for('index') }}">Exit Maintenance</a> — return to main screen</p>
   <section class="panel maintenance-panel">
     <h2>Maintenance — Restore-from roots</h2>
     <p class="panel-description">Add or remove "Restore from" options. Only paths under <code>/mnt</code> with prefix <code>backup_</code> are allowed.</p>

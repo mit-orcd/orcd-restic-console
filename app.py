@@ -59,8 +59,9 @@ def login():
     role = verify_user(app_config.users_file, username, password)
     if role is None:
         return render_template("login.html", error="Invalid username or password", next_url=request.form.get("next", "/"))
+    # Only two roles are defined: admin and user; any other is treated as user
     session["user"] = username
-    session["role"] = role
+    session["role"] = "admin" if role == "admin" else "user"
     next_url = request.form.get("next", "").strip() or "/"
     if next_url.startswith("//") or (next_url.startswith("/") and "://" in next_url):
         next_url = "/"
