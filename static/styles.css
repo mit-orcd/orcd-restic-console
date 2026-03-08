@@ -250,6 +250,21 @@ pre {
   font-size: 0.9rem;
 }
 
+.signed-in-notice {
+  margin: -8px 0 16px;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.signed-in-notice a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.signed-in-notice a:hover {
+  text-decoration: underline;
+}
+
 .panel-description {
   margin: -4px 0 12px;
   color: #6b7280;

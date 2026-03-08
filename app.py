@@ -291,6 +291,9 @@ def _job_recovery_restore(
 
 @app.route("/")
 def index() -> str:
+    # Require login: redirect to login screen before showing main page
+    if not session.get("user"):
+        return redirect(url_for("login", next=request.url or "/"))
     restore_jobs = _read_restore_log_last_n(10)
     # Normalize keys for template (ts -> time, snapshot -> snapshot, status, message)
     for j in restore_jobs:
@@ -309,6 +312,9 @@ def index() -> str:
 
 @app.route("/maintenance")
 def maintenance() -> str:
+    # Only admin role can access maintenance screen
+    if not session.get("user"):
+        return redirect(url_for("login", next=request.url or url_for("maintenance")))
     _require_admin()
     return render_template("maintenance.html")
 
