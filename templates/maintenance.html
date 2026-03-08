@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+{% block content %}
+  <section class="panel maintenance-panel">
+    <h2>Maintenance — Restore-from roots</h2>
+    <p class="panel-description">Add or remove "Restore from" options. Only paths under <code>/mnt</code> with prefix <code>backup_</code> are allowed.</p>
+
+    <h3>Add new root</h3>
+    <div class="add-root-form">
+      <div class="form-group">
+        <label for="new-root-name">Display name</label>
+        <input type="text" id="new-root-name" placeholder="e.g. User Homes">
+      </div>
+      <div class="form-group">
+        <label for="new-root-path">Path (from allowed list)</label>
+        <select id="new-root-path">
+          <option value="">— Select path —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button type="button" class="btn" id="add-root-btn">Add</button>
+      </div>
+    </div>
+    <p id="add-root-error" class="login-error" style="display: none;"></p>
+
+    <h3>Current roots</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Name</th>
+          <th>Path</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="roots-tbody">
+        <tr><td colspan="4">Loading…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+(function() {
+  const tbody = document.getElementById("roots-tbody");
+  const pathSelect = document.getElementById("new-root-path");
+  const nameInput = document.getElementById("new-root-name");
+  const addBtn = document.getElementById("add-root-btn");
+  const errEl = document.getElementById("add-root-error");
+
+  async function request(url, options = {}) {
+    const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
+    if (!res.ok) throw new Error(await res.text() || "Request failed");
+    return res.status === 204 ? null : res.json();
+  }
+
+  function showErr(msg) {
+    errEl.textContent = msg;
+    errEl.style.display = msg ? "block" : "none";
+  }
+
+  async function load() {
+    const data = await request("/api/admin/recovery-roots");
+    pathSelect.innerHTML = "<option value=\"\">— Select path —</option>";
+    (data.allowed_dirs || []).forEach(function(d) {
+      const opt = document.createElement("option");
+      opt.value = d.path;
+      opt.textContent = d.name + " (" + d.path + ")";
+      pathSelect.appendChild(opt);
+    });
+    tbody.innerHTML = "";
+    (data.roots || []).forEach(function(r) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td><code>" + (r.key || "").replace(/</g, "&lt;") + "</code></td>" +
+        "<td>" + (r.name || "").replace(/</g, "&lt;") + "</td>" +
+        "<td><code>" + (r.path || "").replace(/</g, "&lt;") + "</code></td>" +
+        "<td><button type=\"button\" class=\"btn btn-small danger\" data-key=\"" + (r.key || "").replace(/"/g, "&quot;") + "\">Remove</button></td>";
+      tr.querySelector("button").addEventListener("click", function() {
+        if (!confirm("Remove this root?")) return;
+        request("/api/admin/recovery-roots/" + encodeURIComponent(r.key), { method: "DELETE" })
+          .then(load)
+          .catch(function(e) { alert(e.message); });
+      });
+      tbody.appendChild(tr);
+    });
+    if ((data.roots || []).length === 0) tbody.innerHTML = "<tr><td colspan=\"4\">No roots configured.</td></tr>";
+  }
+
+  addBtn.addEventListener("click", function() {
+    const name = nameInput.value.trim();
+    const path = pathSelect.value.trim();
+    showErr("");
+    if (!name || !path) {
+      showErr("Display name and path are required.");
+      return;
+    }
+    request("/api/admin/recovery-roots", {
+      method: "POST",
+      body: JSON.stringify({ name: name, path: path })
+    })
+      .then(function() {
+        nameInput.value = "";
+        pathSelect.value = "";
+        load();
+      })
+      .catch(function(e) {
+        showErr(e.message);
+      });
+  });
+
+  load();
+})();
+  </script>
+{% endblock %}

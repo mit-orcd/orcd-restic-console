@@ -13,11 +13,12 @@ paths:
   log_dir: "./data/logs"
   job_store: "./data/job_history.json"
   restore_root: "/mnt/restores"
-  # Root dirs for recovery panel (restic repos)
+  # Root dirs for recovery panel (see config/recovery_roots.yml; admin can add more via Maintenance)
   backup_user_home: "/mnt/backup_home/home3"
   backup_software: "/mnt/backup_software/software"
   default_restore_target: "/tmp"
   restore_log: "/db/restic/log/restore.log"
+  users_file: "/db/restic/sec/users"
 aws:
   binary: "/usr/local/bin/aws"
   default_region: "us-east-1"

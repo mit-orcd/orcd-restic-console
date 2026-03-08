@@ -27,6 +27,7 @@ class AppConfig:
     aws_binary: str
     aws_default_region: str
     aws_default_endpoint: str
+    users_file: str
 
 
 class ConfigStore:
@@ -72,6 +73,7 @@ class ConfigStore:
             aws_binary=aws.get("binary", "/usr/local/bin/aws"),
             aws_default_region=aws.get("default_region", "us-east-1"),
             aws_default_endpoint=aws.get("default_endpoint", "s3.amazonaws.com"),
+            users_file=paths.get("users_file", "/db/restic/sec/users"),
         )
 
     @staticmethod

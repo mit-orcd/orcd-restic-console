@@ -1,0 +1,9 @@
+# Restore-from roots: display name and path (must be under /mnt with backup_ prefix)
+# Admin can add/remove via Maintenance page.
+roots:
+  - key: user_home
+    name: User Homes
+    path: /mnt/backup_home/home3
+  - key: software
+    name: Software
+    path: /mnt/backup_software/software

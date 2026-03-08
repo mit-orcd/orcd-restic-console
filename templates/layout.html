@@ -8,8 +8,21 @@
   </head>
   <body>
     <header>
-      <h1>Backup Control Panel</h1>
-      <p class="subtitle">Manage restic backups, restore jobs, and destinations.</p>
+      <div class="header-row">
+        <div>
+          <h1>Backup Control Panel</h1>
+          <p class="subtitle">Manage restic backups, restore jobs, and destinations.</p>
+        </div>
+        <nav class="header-nav">
+          {% if current_user %}
+            <span class="header-user">{{ current_user }}</span>
+            {% if is_admin %}
+              <a href="{{ url_for('maintenance') }}" class="header-link">Maintenance</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}" class="header-link">Logout</a>
+          {% endif %}
+        </nav>
+      </div>
     </header>
     <main>
       {% block content %}{% endblock %}

@@ -2,23 +2,84 @@ import json
 import os
 import sys
 import time
+from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
+from lib.auth import verify_user
 from lib.config import AppConfig, ConfigStore
 from lib.jobs import JobManager
+from lib.recovery_roots import RecoveryRootsStore, list_allowed_roots
 from lib.restic import ResticConfig, ResticService, run_command
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config" / "backups.yml"
 APP_CONFIG_PATH = BASE_DIR / "config" / "app.yml"
+RECOVERY_ROOTS_PATH = BASE_DIR / "config" / "recovery_roots.yml"
 
 store = ConfigStore(CONFIG_PATH, APP_CONFIG_PATH)
 app_config = store.load_app_config()
+recovery_roots_store = RecoveryRootsStore(RECOVERY_ROOTS_PATH)
 app = Flask(__name__)
 app.secret_key = app_config.secret_key
+
+
+def _require_auth():
+    """Redirect to login if not authenticated."""
+    ep = request.endpoint
+    if not ep or ep == "static":
+        return
+    if ep in ("login", "logout"):
+        return
+    if session.get("user") is None:
+        return redirect(url_for("login", next=request.url))
+
+
+def _require_admin():
+    """Abort 403 if not admin."""
+    if session.get("role") != "admin":
+        abort(403, "Admin role required")
+
+
+@app.before_request
+def before_request():
+    _require_auth()
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html", next_url=request.args.get("next", "/"))
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if not username:
+        return render_template("login.html", error="Username required", next_url=request.form.get("next", "/"))
+    role = verify_user(app_config.users_file, username, password)
+    if role is None:
+        return render_template("login.html", error="Invalid username or password", next_url=request.form.get("next", "/"))
+    session["user"] = username
+    session["role"] = role
+    next_url = request.form.get("next", "").strip() or "/"
+    if next_url.startswith("//") or (next_url.startswith("/") and "://" in next_url):
+        next_url = "/"
+    return redirect(next_url)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.context_processor
+def inject_user():
+    return {
+        "current_user": session.get("user"),
+        "is_admin": session.get("role") == "admin",
+    }
+
 
 job_manager = JobManager(Path(app_config.job_store), app_config.max_jobs)
 restic_service = ResticService(
@@ -124,11 +185,15 @@ def _job_restore(fs_id: str, fs_entry: dict, dest_entry: dict, snapshot_id: str,
 
 
 def _recovery_repo_root(root_key: str) -> Path:
+    p = recovery_roots_store.get_path_by_key(root_key)
+    if p is not None:
+        return p
+    # Legacy fallback from app.yml
     if root_key == "user_home":
         return Path(app_config.backup_user_home)
     if root_key == "software":
         return Path(app_config.backup_software)
-    abort(400, "root must be user_home or software")
+    abort(400, "unknown recovery root")
 
 
 def _restore_log_path() -> Path:
@@ -240,6 +305,12 @@ def index() -> str:
         restore_jobs=restore_jobs,
         default_restore_target=app_config.default_restore_target,
     )
+
+
+@app.route("/maintenance")
+def maintenance() -> str:
+    _require_admin()
+    return render_template("maintenance.html")
 
 
 @app.route("/api/filesystems", methods=["GET"])
@@ -370,11 +441,18 @@ def list_jobs() -> Any:
     return jsonify(job_manager.list_jobs())
 
 
+@app.route("/api/recovery/roots", methods=["GET"])
+def list_recovery_roots() -> Any:
+    """List recovery roots for the Restore-from dropdown."""
+    roots = recovery_roots_store.load()
+    return jsonify([{"key": r["key"], "name": r["name"]} for r in roots])
+
+
 @app.route("/api/recovery/repos", methods=["GET"])
 def list_recovery_repos() -> Any:
     root_key = request.args.get("root")
     if not root_key:
-        abort(400, "root is required (user_home or software)")
+        abort(400, "root is required")
     base = _recovery_repo_root(root_key)
     if not base.exists() or not base.is_dir():
         return jsonify({"root": str(base), "repos": []})
@@ -462,6 +540,42 @@ def run_recovery_restore() -> Any:
         lambda: _job_recovery_restore(repo, snapshot_id, target_path, include_paths, exclude_paths),
     )
     return jsonify({"job_id": job_id})
+
+
+@app.route("/api/admin/recovery-roots", methods=["GET"])
+def admin_list_recovery_roots() -> Any:
+    _require_admin()
+    roots = recovery_roots_store.load()
+    allowed = list_allowed_roots()
+    return jsonify({"roots": roots, "allowed_dirs": allowed})
+
+
+@app.route("/api/admin/recovery-roots", methods=["POST"])
+def admin_add_recovery_root() -> Any:
+    _require_admin()
+    payload = request.get_json(force=True)
+    name = (payload.get("name") or "").strip()
+    path = (payload.get("path") or "").strip()
+    key = (payload.get("key") or "").strip().lower().replace(" ", "_")
+    if not name or not path:
+        abort(400, "name and path are required")
+    if not key:
+        key = name.lower().replace(" ", "_")
+    try:
+        recovery_roots_store.add(key, name, path)
+        return jsonify({"status": "ok", "key": key})
+    except ValueError as e:
+        abort(400, str(e))
+
+
+@app.route("/api/admin/recovery-roots/<key>", methods=["DELETE"])
+def admin_remove_recovery_root(key: str) -> Any:
+    _require_admin()
+    try:
+        recovery_roots_store.remove(key)
+        return jsonify({"status": "ok"})
+    except KeyError:
+        abort(404, "Recovery root not found")
 
 
 @app.route("/api/s3/buckets", methods=["POST"])

@@ -11,6 +11,35 @@ header {
   padding: 20px 32px;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-user {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.header-link {
+  color: #93c5fd;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.header-link:hover {
+  text-decoration: underline;
+}
+
 h1 {
   margin: 0 0 6px;
 }
@@ -242,4 +271,71 @@ pre {
   color: #6b7280;
   padding-left: 24px;
   border-bottom: 1px solid #e5e7eb;
+}
+
+/* Login */
+.login-panel {
+  max-width: 360px;
+}
+
+.login-form .form-group {
+  margin-bottom: 12px;
+}
+
+.login-form .form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 280px;
+}
+
+.login-error {
+  color: #dc2626;
+  margin-bottom: 12px;
+}
+
+.login-hint {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.login-hint code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Maintenance */
+.maintenance-panel .form-group {
+  margin-bottom: 12px;
+}
+
+.maintenance-panel .form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.maintenance-panel input,
+.maintenance-panel select {
+  min-width: 200px;
+}
+
+.maintenance-panel .add-root-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.maintenance-panel table td {
+  vertical-align: middle;
 }

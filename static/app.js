@@ -349,7 +349,8 @@ restoreRunBtn?.addEventListener("click", async () => {
 });
 
 restoreCancelBtn?.addEventListener("click", () => {
-  restoreFrom.value = "user_home";
+  if (restoreFrom?.options?.length > 1) restoreFrom.value = restoreFrom.options[1].value;
+  else restoreFrom.value = "";
   restoreRepo.innerHTML = "<option value=\"\">— Select repository —</option>";
   restoreRepoType.value = "";
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
@@ -365,7 +366,24 @@ restoreCancelBtn?.addEventListener("click", () => {
   restoreFrom.dispatchEvent(new Event("change"));
 });
 
-// Load repos on page load for initial "Restore from" value
-if (restoreFrom?.value) {
-  restoreFrom.dispatchEvent(new Event("change"));
-}
+// Load recovery roots for "Restore from" dropdown, then load repos for first option
+(async function loadRestoreFromOptions() {
+  if (!restoreFrom) return;
+  try {
+    const roots = await request("/api/recovery/roots");
+    restoreFrom.innerHTML = "<option value=\"\">— Select source —</option>";
+    (roots || []).forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.key;
+      opt.textContent = r.name;
+      restoreFrom.appendChild(opt);
+    });
+    if (roots && roots.length > 0) {
+      restoreFrom.value = roots[0].key;
+      restoreFrom.dispatchEvent(new Event("change"));
+    }
+  } catch (err) {
+    restoreFrom.innerHTML = "<option value=\"\">— Failed to load —</option>";
+    console.error(err);
+  }
+})();
