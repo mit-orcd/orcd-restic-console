@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Backup Control Panel</title>
+    <title>ORCD Backups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
@@ -10,8 +10,8 @@
     <header>
       <div class="header-row">
         <div>
-          <h1>Backup Control Panel</h1>
-          <p class="subtitle">Manage restic backups, restore jobs, and destinations.</p>
+          <h1>ORCD Backups</h1>
+          <p class="header-tagline">Control Panel</p>
         </div>
         <nav class="header-nav">
           <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light/dark panel" aria-label="Toggle light/dark theme">
@@ -34,6 +34,9 @@
     <main>
       {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer">
+      <p class="footer-tagline">Manage restic backups, restore jobs, and destinations.</p>
+    </footer>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

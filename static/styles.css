@@ -147,16 +147,31 @@ body.theme-dark .theme-toggle-half-dark {
 }
 
 h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
 
-.subtitle {
+.header-tagline {
   margin: 0;
+  font-size: 0.95rem;
+  font-weight: 400;
   color: var(--header-subtitle);
 }
 
 main {
-  padding: 24px 32px 60px;
+  padding: 24px 32px 40px;
+}
+
+.site-footer {
+  padding: 16px 32px 24px;
+  text-align: center;
+  color: var(--notice-fg);
+  border-top: 1px solid var(--panel-border);
+  background: var(--body-bg);
+}
+
+.footer-tagline {
+  margin: 0;
+  font-size: 0.8rem;
 }
 
 .panel {
