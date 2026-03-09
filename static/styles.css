@@ -309,6 +309,7 @@ pre {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
+  margin-top: 16px;
   margin-bottom: 12px;
 }
 
