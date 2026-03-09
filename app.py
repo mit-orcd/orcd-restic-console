@@ -470,6 +470,20 @@ def list_recovery_repos() -> Any:
     return jsonify({"root": str(base), "repos": repos})
 
 
+def _snapshots_with_unlock(repo: str, log_path: Path) -> Any:
+    """Run restic snapshots; if repo is locked, unlock and retry once."""
+    code, stdout, stderr = restic_service.snapshots(repo, log_path)
+    if code == 0:
+        return json.loads(stdout)
+    err = (stderr or "").lower()
+    if "lock" in err or "locked" in err:
+        restic_service.unlock(repo, log_path)
+        code, stdout, stderr = restic_service.snapshots(repo, log_path)
+        if code == 0:
+            return json.loads(stdout)
+    abort(500, stderr or "failed to load snapshots")
+
+
 @app.route("/api/recovery/snapshots", methods=["GET"])
 def list_recovery_snapshots() -> Any:
     repo = request.args.get("repo")
@@ -479,10 +493,22 @@ def list_recovery_snapshots() -> Any:
     if not repo_path.exists() or not repo_path.is_dir():
         abort(404, "repo path not found")
     log_path = _log_path(repo_path.name, "snapshots")
-    code, stdout, _ = restic_service.snapshots(repo, log_path)
-    if code != 0:
-        abort(500, "failed to load snapshots")
-    return jsonify(json.loads(stdout))
+    data = _snapshots_with_unlock(repo, log_path)
+    return jsonify(data)
+
+
+def _ls_with_unlock(repo: str, snapshot: str, log_path: Path) -> tuple:
+    """Run restic ls; if repo is locked, unlock and retry once."""
+    code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
+    if code == 0:
+        return stdout, stderr
+    err = (stderr or "").lower()
+    if "lock" in err or "locked" in err:
+        restic_service.unlock(repo, log_path)
+        code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
+        if code == 0:
+            return stdout, stderr
+    abort(500, stderr or "failed to list snapshot")
 
 
 @app.route("/api/recovery/ls", methods=["GET"])
@@ -492,12 +518,10 @@ def list_recovery_ls() -> Any:
     if not repo or not snapshot:
         abort(400, "repo and snapshot are required")
     log_path = _log_path(Path(repo).name, "ls")
-    code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
-    if code != 0:
-        abort(500, stderr or "failed to list snapshot")
-    # restic ls prints a header line then one path per line (paths start with /)
+    stdout, _ = _ls_with_unlock(repo, snapshot, log_path)
+    # restic ls: one path per line (paths start with /)
     paths = []
-    for line in stdout.splitlines():
+    for line in (stdout or "").splitlines():
         line = line.strip()
         if line and (line.startswith("/") or line == "/"):
             paths.append(line)

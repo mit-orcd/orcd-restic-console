@@ -149,6 +149,7 @@ restoreFrom?.addEventListener("change", async () => {
   restoreRepo.innerHTML = "<option value=\"\">— Select repository —</option>";
   restoreRepoType.value = "";
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
+  restoreTarget.value = restoreTarget.placeholder || "/tmp";
   restoreVerifySummary.style.display = "none";
   recoveryRootPath = "";
   if (!root) return;
@@ -175,6 +176,7 @@ function updateTargetFromRepo(repoPath) {
 restoreRepo?.addEventListener("change", () => {
   if (restoreRepoType?.value.trim()) return;
   const repo = restoreRepo.value;
+  restoreTarget.value = restoreTarget.placeholder || "/tmp";
   updateTargetFromRepo(repo);
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreFileListContainer.style.display = "none";
@@ -191,6 +193,7 @@ restoreRepoType?.addEventListener("blur", () => {
 });
 
 restoreRepoType?.addEventListener("input", () => {
+  restoreTarget.value = restoreTarget.placeholder || "/tmp";
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreVerifySummary.style.display = "none";
 });
