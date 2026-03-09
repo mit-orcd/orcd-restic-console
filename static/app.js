@@ -196,16 +196,25 @@ restoreRepoType?.addEventListener("input", () => {
 });
 
 async function loadSnapshotsForRepo(repo) {
+  if (!restoreSnapshot) return;
+  restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   try {
     const data = await request(`/api/recovery/snapshots?repo=${encodeURIComponent(repo)}`);
-    const list = Array.isArray(data) ? data : (data.snapshots || []);
+    const raw = Array.isArray(data) ? data : (data.snapshots || []);
+    const seen = new Set();
+    const list = raw.filter((s) => {
+      const id = s.id || s.short_id;
+      if (!id || id === "latest" || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    list.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
     const latest = document.createElement("option");
     latest.value = "latest";
     latest.textContent = "latest";
     restoreSnapshot.appendChild(latest);
     list.forEach((s) => {
       const id = s.id || s.short_id;
-      if (!id || id === "latest") return;
       const opt = document.createElement("option");
       opt.value = id;
       opt.textContent = `${id} (${s.time || ""})`;
