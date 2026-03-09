@@ -247,6 +247,39 @@ restoreFilterMode?.addEventListener("change", () => {
   }
 });
 
+function renderFileList(paths, searchTerm) {
+  const filtered = searchTerm
+    ? paths.filter((p) => p.toLowerCase().includes(searchTerm.toLowerCase()))
+    : paths;
+  restoreFileList.innerHTML = "";
+  if (searchTerm && filtered.length === 0) {
+    const msg = document.createElement("div");
+    msg.className = "file-list-message";
+    msg.textContent = "No paths matching \"" + searchTerm.replace(/</g, "&lt;") + "\"";
+    restoreFileList.appendChild(msg);
+    return;
+  }
+  if (searchTerm && paths.length > 0) {
+    const summary = document.createElement("div");
+    summary.className = "file-list-summary";
+    summary.textContent = "Showing " + filtered.length + " of " + paths.length + " paths";
+    restoreFileList.appendChild(summary);
+  }
+  filtered.forEach((p) => {
+    const line = document.createElement("div");
+    line.className = "file-line";
+    line.textContent = p;
+    line.title = "Click to copy path";
+    line.addEventListener("click", () => {
+      navigator.clipboard.writeText(p).then(() => {
+        line.classList.add("copied");
+        setTimeout(() => line.classList.remove("copied"), 500);
+      });
+    });
+    restoreFileList.appendChild(line);
+  });
+}
+
 restoreLoadFiles?.addEventListener("click", async () => {
   const repo = getEffectiveRepo();
   const snapshot = restoreSnapshot.value;
@@ -254,6 +287,7 @@ restoreLoadFiles?.addEventListener("click", async () => {
     alert("Select or type repository and select snapshot first.");
     return;
   }
+  const searchTerm = document.getElementById("restore-file-search")?.value?.trim() || "";
   restoreFileList.innerHTML = "<span class=\"loading\">Loading…</span>";
   restoreFileListContainer.style.display = "block";
   try {
@@ -261,20 +295,7 @@ restoreLoadFiles?.addEventListener("click", async () => {
       `/api/recovery/ls?repo=${encodeURIComponent(repo)}&snapshot=${encodeURIComponent(snapshot)}`
     );
     const paths = data.paths || [];
-    restoreFileList.innerHTML = "";
-    paths.forEach((p) => {
-      const line = document.createElement("div");
-      line.className = "file-line";
-      line.textContent = p;
-      line.title = "Click to copy path";
-      line.addEventListener("click", () => {
-        navigator.clipboard.writeText(p).then(() => {
-          line.classList.add("copied");
-          setTimeout(() => line.classList.remove("copied"), 500);
-        });
-      });
-      restoreFileList.appendChild(line);
-    });
+    renderFileList(paths, searchTerm);
   } catch (err) {
     restoreFileList.innerHTML = "";
     const errEl = document.createElement("div");

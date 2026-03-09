@@ -316,6 +316,18 @@ pre {
   min-width: 220px;
 }
 
+.restore-panel .file-search-input {
+  min-width: 200px;
+}
+
+.file-list-summary,
+.file-list-message {
+  font-size: 0.85rem;
+  color: var(--notice-fg);
+  padding: 6px 4px;
+  margin-bottom: 4px;
+}
+
 .file-list-container {
   margin-bottom: 16px;
 }
