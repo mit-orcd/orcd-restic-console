@@ -308,7 +308,7 @@ pre {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 8px;
+  gap: 16px;
   margin-top: 16px;
   margin-bottom: 12px;
 }
