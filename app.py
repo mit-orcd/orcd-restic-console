@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
-from lib.auth import verify_user
+from lib.auth import get_all_roles, update_user_password, verify_user
 from lib.config import AppConfig, ConfigStore
 from lib.jobs import JobManager
 from lib.recovery_roots import RecoveryRootsStore, list_allowed_roots
@@ -48,24 +48,60 @@ def before_request():
     _require_auth()
 
 
+def _safe_next_url(form_key: str = "next") -> str:
+    next_url = (request.form.get(form_key) or request.args.get("next") or "").strip() or "/"
+    if next_url.startswith("//") or (next_url.startswith("/") and "://" in next_url):
+        return "/"
+    return next_url
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
-        return render_template("login.html", next_url=request.args.get("next", "/"))
+        next_url = request.args.get("next", "/")
+        show_reset = request.args.get("reset") and session.get("pending_reset")
+        return render_template(
+            "login.html",
+            next_url=next_url,
+            show_reset=show_reset,
+            reset_username=session.get("pending_reset", ""),
+        )
     username = (request.form.get("username") or "").strip()
     password = request.form.get("password") or ""
     if not username:
-        return render_template("login.html", error="Username required", next_url=request.form.get("next", "/"))
-    role = verify_user(app_config.users_file, username, password)
+        return render_template("login.html", error="Username required", next_url=_safe_next_url())
+    role = verify_user(app_config.users_file, username, password, app_config.secret_key)
     if role is None:
-        return render_template("login.html", error="Invalid username or password", next_url=request.form.get("next", "/"))
+        return render_template("login.html", error="Invalid username or password", next_url=_safe_next_url())
+    if role == "must_reset":
+        session["pending_reset"] = username
+        return redirect(url_for("login", reset=1, next=request.form.get("next", "/")))
     # Only two roles are defined: admin and user; any other is treated as user
     session["user"] = username
     session["role"] = "admin" if role == "admin" else "user"
-    next_url = request.form.get("next", "").strip() or "/"
-    if next_url.startswith("//") or (next_url.startswith("/") and "://" in next_url):
-        next_url = "/"
-    return redirect(next_url)
+    return redirect(_safe_next_url())
+
+
+@app.route("/reset-password", methods=["POST"])
+def reset_password():
+    if not session.get("pending_reset"):
+        return render_template("login.html", error="Reset not requested", next_url="/")
+    username = (request.form.get("username") or "").strip()
+    if username != session.get("pending_reset"):
+        return render_template("login.html", error="Invalid session", next_url="/", show_reset=True, reset_username=session.get("pending_reset"))
+    new_password = request.form.get("new_password") or ""
+    confirm = request.form.get("new_password_confirm") or ""
+    if not new_password or len(new_password) < 1:
+        return render_template("login.html", error="New password is required", next_url=_safe_next_url(), show_reset=True, reset_username=username)
+    if new_password != confirm:
+        return render_template("login.html", error="New password and confirmation do not match", next_url=_safe_next_url(), show_reset=True, reset_username=username)
+    if not update_user_password(app_config.users_file, username, new_password, app_config.secret_key):
+        return render_template("login.html", error="Failed to update password", next_url="/", show_reset=True, reset_username=username)
+    session.pop("pending_reset", None)
+    session["user"] = username
+    role = get_all_roles(app_config.users_file).get(username, "user")
+    session["role"] = "admin" if role == "admin" else "user"
+    return redirect(_safe_next_url())
 
 
 @app.route("/logout")
