@@ -1,6 +1,5 @@
 {% extends "layout.html" %}
 {% block content %}
-  <p class="signed-in-notice">Signed in as <strong>{{ current_user }}</strong>{% if is_admin %} · <a href="{{ url_for('maintenance') }}">Maintenance</a>{% endif %} · <a href="{{ url_for('logout') }}">Logout</a></p>
   <section class="panel restore-panel">
     <h2>Restore</h2>
     <div class="restore-form-grid">
