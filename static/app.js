@@ -195,8 +195,12 @@ restoreRepoType?.addEventListener("input", () => {
   restoreVerifySummary.style.display = "none";
 });
 
+let snapshotLoadInProgress = false;
+
 async function loadSnapshotsForRepo(repo) {
   if (!restoreSnapshot) return;
+  if (snapshotLoadInProgress) return;
+  snapshotLoadInProgress = true;
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   try {
     const data = await request(`/api/recovery/snapshots?repo=${encodeURIComponent(repo)}`);
@@ -222,12 +226,14 @@ async function loadSnapshotsForRepo(repo) {
     });
   } catch (err) {
     alert(err.message);
+  } finally {
+    snapshotLoadInProgress = false;
   }
 }
 
 document.getElementById("restore-snapshot")?.addEventListener("focus", () => {
   const repo = getEffectiveRepo();
-  if (repo && restoreSnapshot.options.length <= 1) loadSnapshotsForRepo(repo);
+  if (repo && restoreSnapshot.options.length <= 1 && !snapshotLoadInProgress) loadSnapshotsForRepo(repo);
 });
 
 restoreFilterMode?.addEventListener("change", () => {
