@@ -431,8 +431,12 @@ pre {
   font-weight: 500;
 }
 
-.job-message-row td {
+.recent-restore-jobs tbody td {
   font-size: 0.85rem;
+}
+
+.recent-restore-jobs .job-message-row td {
+  font-size: 0.8rem;
   color: var(--notice-fg);
   padding-left: 24px;
   border-bottom: 1px solid var(--table-border);
