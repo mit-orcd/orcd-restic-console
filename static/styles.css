@@ -290,7 +290,7 @@ pre {
   display: grid;
   gap: 12px 24px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  margin-bottom: 16px;
+  margin-bottom: 28px;
 }
 
 .restore-panel .form-group {
@@ -308,8 +308,7 @@ pre {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
