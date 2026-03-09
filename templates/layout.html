@@ -9,9 +9,12 @@
   <body>
     <header>
       <div class="header-row">
-        <div>
-          <h1>ORCD Backups</h1>
-          <p class="header-tagline">Control Panel</p>
+        <div class="header-brand">
+          <img src="{{ url_for('static', filename='images/orcd-x.png') }}" alt="" class="header-logo" width="40" height="40">
+          <div>
+            <h1>ORCD Backups</h1>
+            <p class="header-tagline">Control Panel</p>
+          </div>
         </div>
         <nav class="header-nav">
           <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle light/dark panel" aria-label="Toggle light/dark theme">
