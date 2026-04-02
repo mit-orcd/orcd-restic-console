@@ -11,6 +11,8 @@ restic:
   keep_weekly: 2
 paths:
   log_dir: "./data/logs"
+  # Optional: when APP_DEBUG=1, also append detailed app logs here
+  # debug_log_file: "./data/debug.log"
   job_store: "./data/job_history.json"
   restore_root: "/mnt/restores"
   # Root dirs for recovery panel (see config/recovery_roots.yml; admin can add more via Maintenance)

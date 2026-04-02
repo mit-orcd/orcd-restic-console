@@ -1,8 +1,11 @@
+import logging
 import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
+
+_log = logging.getLogger("orcd.restic.restic")
 
 
 @dataclass
@@ -21,8 +24,10 @@ def run_command(
     env: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, str, str]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd_preview = " ".join(args)
+    _log.debug("restic cmd: %s", cmd_preview)
     with log_path.open("a", encoding="utf-8") as handle:
-        handle.write(f"$ {' '.join(args)}\n")
+        handle.write(f"$ {cmd_preview}\n")
         result = subprocess.run(
             args,
             cwd=cwd,
@@ -35,7 +40,13 @@ def run_command(
             handle.write(result.stdout)
         if result.stderr:
             handle.write(result.stderr)
-        return result.returncode, result.stdout, result.stderr
+        code = result.returncode
+        if code == 0:
+            _log.debug("restic ok exit=0 cmd=%s", cmd_preview[:200])
+        else:
+            err_snip = (result.stderr or result.stdout or "")[:1500]
+            _log.warning("restic fail exit=%s cmd=%s stderr=%s", code, cmd_preview[:200], err_snip)
+        return code, result.stdout, result.stderr
 
 
 class ResticService:

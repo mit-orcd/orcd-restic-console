@@ -28,6 +28,7 @@ class AppConfig:
     aws_default_region: str
     aws_default_endpoint: str
     users_file: str
+    debug_log_file: Optional[str]
 
 
 class ConfigStore:
@@ -74,6 +75,7 @@ class ConfigStore:
             aws_default_region=aws.get("default_region", "us-east-1"),
             aws_default_endpoint=aws.get("default_endpoint", "s3.amazonaws.com"),
             users_file=paths.get("users_file", "/db/restic/sec/users"),
+            debug_log_file=paths.get("debug_log_file") or None,
         )
 
     @staticmethod

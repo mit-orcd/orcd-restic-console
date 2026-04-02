@@ -4,17 +4,24 @@ import sys
 import time
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
 from lib.auth import get_all_roles, update_user_password, verify_user
 from lib.config import AppConfig, ConfigStore
 from lib.jobs import JobManager
+from lib.logutil import setup_app_logging
 from lib.recovery_roots import RecoveryRootsStore, list_allowed_roots
 from lib.restic import ResticConfig, ResticService, run_command
 
 BASE_DIR = Path(__file__).resolve().parent
+
+
+def _resolve_app_path(path_str: str) -> Path:
+    """Resolve config paths relative to app root so Gunicorn cwd does not break relative paths."""
+    p = Path(path_str)
+    return p.resolve() if p.is_absolute() else (BASE_DIR / p).resolve()
 CONFIG_PATH = BASE_DIR / "config" / "backups.yml"
 APP_CONFIG_PATH = BASE_DIR / "config" / "app.yml"
 RECOVERY_ROOTS_PATH = BASE_DIR / "config" / "recovery_roots.yml"
@@ -22,6 +29,7 @@ RECOVERY_ROOTS_PATH = BASE_DIR / "config" / "recovery_roots.yml"
 store = ConfigStore(CONFIG_PATH, APP_CONFIG_PATH)
 app_config = store.load_app_config()
 recovery_roots_store = RecoveryRootsStore(RECOVERY_ROOTS_PATH)
+log = setup_app_logging(debug_log_file=app_config.debug_log_file)
 app = Flask(__name__)
 app.secret_key = app_config.secret_key
 
@@ -118,7 +126,7 @@ def inject_user():
     }
 
 
-job_manager = JobManager(Path(app_config.job_store), app_config.max_jobs)
+job_manager = JobManager(_resolve_app_path(app_config.job_store), app_config.max_jobs)
 restic_service = ResticService(
     ResticConfig(
         binary=app_config.restic_binary,
@@ -132,7 +140,7 @@ restic_service = ResticService(
 
 def _log_path(fs_id: str, action: str) -> Path:
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    return Path(app_config.log_dir) / f"{fs_id}-{action}-{stamp}.log"
+    return _resolve_app_path(app_config.log_dir) / f"{fs_id}-{action}-{stamp}.log"
 
 
 def _resolve_repo(fs_entry: dict, dest_entry: dict) -> str:
@@ -287,12 +295,26 @@ def _job_recovery_restore(
     target_path: str,
     include_paths: list,
     exclude_paths: list,
+    log_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    log_path = Path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    if log_path is None:
+        log_path = _resolve_app_path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    log.info(
+        "recovery_restore start repo=%s snapshot=%s target=%s include=%s exclude=%s log=%s",
+        repo,
+        snapshot_id,
+        target_path,
+        len(include_paths or []),
+        len(exclude_paths or []),
+        log_path,
+    )
     target_path = _allow_restore_target(target_path)
+    log.debug("recovery_restore target resolved=%s", target_path)
     logged = False
     try:
-        restic_service.unlock(repo, log_path)
+        log.debug("recovery_restore unlock repo=%s", repo)
+        u_code, _, u_err = restic_service.unlock(repo, log_path)
+        log.debug("recovery_restore unlock exit=%s stderr=%s", u_code, (u_err or "").strip()[:500])
         code, _, stderr = restic_service.restore(
             repo,
             snapshot_id,
@@ -303,16 +325,19 @@ def _job_recovery_restore(
         )
         if code != 0:
             msg = stderr or "restic restore failed"
+            log.error("recovery_restore restic failed exit=%s stderr=%s", code, msg[:2000])
             _append_restore_log(
                 repo, snapshot_id, target_path, include_paths, exclude_paths, "failure", msg
             )
             logged = True
             raise RuntimeError(msg)
+        log.info("recovery_restore success repo=%s snapshot=%s target=%s", repo, snapshot_id, target_path)
         _append_restore_log(
             repo, snapshot_id, target_path, include_paths, exclude_paths, "success"
         )
         return {"repo": repo, "snapshot": snapshot_id, "target": target_path}
     except Exception:
+        log.exception("recovery_restore exception")
         if not logged:
             _append_restore_log(
                 repo,
@@ -600,12 +625,16 @@ def run_recovery_restore() -> Any:
     exclude_paths = payload.get("exclude_paths") or []
     if not repo or not snapshot_id or not target_path:
         abort(400, "repo, snapshot_id and target_path are required")
+    job_log = _resolve_app_path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log"
     job_id = job_manager.submit(
         "recovery_restore",
         Path(repo).name,
-        Path(app_config.log_dir) / f"recovery-{time.strftime('%Y%m%d-%H%M%S')}.log",
-        lambda: _job_recovery_restore(repo, snapshot_id, target_path, include_paths, exclude_paths),
+        job_log,
+        lambda jl=job_log: _job_recovery_restore(
+            repo, snapshot_id, target_path, include_paths, exclude_paths, jl
+        ),
     )
+    log.info("recovery_restore job submitted job_id=%s repo=%s snapshot=%s", job_id, repo, snapshot_id)
     return jsonify({"job_id": job_id})
 
 
@@ -668,6 +697,6 @@ def create_s3_bucket() -> Any:
 
 
 if __name__ == "__main__":
-    os.makedirs(app_config.log_dir, exist_ok=True)
+    os.makedirs(_resolve_app_path(app_config.log_dir), exist_ok=True)
     debug = os.environ.get("APP_DEBUG") == "1"
     app.run(host=app_config.host, port=app_config.port, debug=debug)
