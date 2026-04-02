@@ -4,7 +4,8 @@
 
 bind = "0.0.0.0:8080"
 workers = 1
-worker_class = "sync"
+# gthread + threads: safe concurrent HTTP in one worker (do not raise workers above 1 for jobs)
+worker_class = "gthread"
 threads = 4
 
 timeout = 300

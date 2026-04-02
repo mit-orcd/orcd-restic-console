@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from lib.auth import get_all_roles, update_user_password, verify_user
 from lib.config import AppConfig, ConfigStore
@@ -32,6 +33,10 @@ recovery_roots_store = RecoveryRootsStore(RECOVERY_ROOTS_PATH)
 log = setup_app_logging(debug_log_file=app_config.debug_log_file)
 app = Flask(__name__)
 app.secret_key = app_config.secret_key
+
+# Behind nginx/Apache reverse proxy: set ORCD_BEHIND_PROXY=1 so redirects and url_for use correct scheme/host
+if os.environ.get("ORCD_BEHIND_PROXY") == "1":
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
 
 def _require_auth():
@@ -63,13 +68,24 @@ def _safe_next_url(form_key: str = "next") -> str:
     return next_url
 
 
+def _login_render(**kwargs: Any) -> str:
+    """Always pass full context for login.html (avoids template edge cases)."""
+    ctx = {
+        "next_url": "/",
+        "error": None,
+        "show_reset": False,
+        "reset_username": "",
+    }
+    ctx.update(kwargs)
+    return render_template("login.html", **ctx)
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
         next_url = request.args.get("next", "/")
-        show_reset = request.args.get("reset") and session.get("pending_reset")
-        return render_template(
-            "login.html",
+        show_reset = bool(request.args.get("reset") and session.get("pending_reset"))
+        return _login_render(
             next_url=next_url,
             show_reset=show_reset,
             reset_username=session.get("pending_reset", ""),
@@ -77,10 +93,10 @@ def login():
     username = (request.form.get("username") or "").strip()
     password = request.form.get("password") or ""
     if not username:
-        return render_template("login.html", error="Username required", next_url=_safe_next_url())
+        return _login_render(error="Username required", next_url=_safe_next_url())
     role = verify_user(app_config.users_file, username, password, app_config.secret_key)
     if role is None:
-        return render_template("login.html", error="Invalid username or password", next_url=_safe_next_url())
+        return _login_render(error="Invalid username or password", next_url=_safe_next_url())
     if role == "must_reset":
         session["pending_reset"] = username
         return redirect(url_for("login", reset=1, next=request.form.get("next", "/")))
@@ -93,18 +109,38 @@ def login():
 @app.route("/reset-password", methods=["POST"])
 def reset_password():
     if not session.get("pending_reset"):
-        return render_template("login.html", error="Reset not requested", next_url="/")
+        return _login_render(error="Reset not requested", next_url="/")
     username = (request.form.get("username") or "").strip()
     if username != session.get("pending_reset"):
-        return render_template("login.html", error="Invalid session", next_url="/", show_reset=True, reset_username=session.get("pending_reset"))
+        return _login_render(
+            error="Invalid session",
+            next_url="/",
+            show_reset=True,
+            reset_username=session.get("pending_reset", ""),
+        )
     new_password = request.form.get("new_password") or ""
     confirm = request.form.get("new_password_confirm") or ""
     if not new_password or len(new_password) < 1:
-        return render_template("login.html", error="New password is required", next_url=_safe_next_url(), show_reset=True, reset_username=username)
+        return _login_render(
+            error="New password is required",
+            next_url=_safe_next_url(),
+            show_reset=True,
+            reset_username=username,
+        )
     if new_password != confirm:
-        return render_template("login.html", error="New password and confirmation do not match", next_url=_safe_next_url(), show_reset=True, reset_username=username)
+        return _login_render(
+            error="New password and confirmation do not match",
+            next_url=_safe_next_url(),
+            show_reset=True,
+            reset_username=username,
+        )
     if not update_user_password(app_config.users_file, username, new_password, app_config.secret_key):
-        return render_template("login.html", error="Failed to update password", next_url="/", show_reset=True, reset_username=username)
+        return _login_render(
+            error="Failed to update password",
+            next_url="/",
+            show_reset=True,
+            reset_username=username,
+        )
     session.pop("pending_reset", None)
     session["user"] = username
     role = get_all_roles(app_config.users_file).get(username, "user")

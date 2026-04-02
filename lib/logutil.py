@@ -36,12 +36,15 @@ def setup_app_logging(
     log.addHandler(stderr)
 
     if debug_log_file and (level == logging.DEBUG or os.environ.get("APP_DEBUG") == "1"):
-        p = Path(debug_log_file)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        fh = logging.FileHandler(p, encoding="utf-8")
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(fmt)
-        log.addHandler(fh)
+        try:
+            p = Path(debug_log_file)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            fh = logging.FileHandler(p, encoding="utf-8")
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(fmt)
+            log.addHandler(fh)
+        except OSError as e:
+            sys.stderr.write(f"orcd.restic: could not open debug_log_file {debug_log_file}: {e}\n")
 
     log.propagate = False
     return log

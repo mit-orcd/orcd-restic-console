@@ -28,7 +28,9 @@ Restore targets must live under `paths.restore_root` in `config/app.yml`.
 
 ## Production (Gunicorn)
 
-See **DEPLOYMENT.md**. Use **`workers = 1`** in Gunicorn so restore jobs stay consistent across requests. Relative paths in `config/app.yml` are resolved from the directory that contains `app.py`.
+See **DEPLOYMENT.md**. Use **`workers = 1`** in Gunicorn so restore jobs stay consistent across requests. Start with **`wsgi:application`** (see `wsgi.py`). Relative paths in `config/app.yml` are resolved from the directory that contains `app.py`.
+
+If the app is behind **nginx or Apache** with HTTPS, set environment variable **`ORCD_BEHIND_PROXY=1`** so login redirects use the correct scheme and host.
 
 ## Debug logging
 
