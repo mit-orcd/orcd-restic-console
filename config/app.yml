@@ -10,6 +10,7 @@ restic:
   keep_daily: 14
   keep_weekly: 2
 paths:
+  # Writable dirs are created at startup if absent (e.g. missing data/logs after redeploy).
   log_dir: "./data/logs"
   # Optional: when APP_DEBUG=1, also append detailed app logs here
   # debug_log_file: "./data/debug.log"

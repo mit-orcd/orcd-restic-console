@@ -1,0 +1,32 @@
+# ORCD restic console — Gunicorn (systemd)
+#
+# Install:
+#   sudo cp deploy/orcd-restic-console.service /etc/systemd/system/
+#   sudo sed -i 's|/root/app/orcd-restic-console|/YOUR/DEPLOY/PATH|g' /etc/systemd/system/orcd-restic-console.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now orcd-restic-console
+#
+# Use .venv/bin/python (not python3): some venvs omit the python3 symlink, which
+# causes status=203/EXEC — "Failed to locate executable".
+
+[Unit]
+Description=ORCD Backups (restic console) - Gunicorn
+After=network.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/app/orcd-restic-console
+Environment="PATH=/root/app/orcd-restic-console/.venv/bin:/usr/local/bin:/usr/bin"
+ExecStart=/root/app/orcd-restic-console/.venv/bin/python -m gunicorn --config gunicorn.conf.py wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=60
+PrivateTmp=true
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
