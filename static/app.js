@@ -120,19 +120,6 @@ const restoreFilterMode = document.getElementById("restore-filter-mode");
 const restoreLoadFiles = document.getElementById("restore-load-files");
 const restoreFileListContainer = document.getElementById("restore-file-list-container");
 const restoreFileList = document.getElementById("restore-file-list");
-const restoreLsCommandWrap = document.getElementById("restore-ls-command-wrap");
-const restoreLsCommand = document.getElementById("restore-ls-command");
-
-function setRestoreLsCommand(command) {
-  if (!restoreLsCommandWrap || !restoreLsCommand) return;
-  if (command) {
-    restoreLsCommand.textContent = command;
-    restoreLsCommandWrap.style.display = "block";
-  } else {
-    restoreLsCommand.textContent = "";
-    restoreLsCommandWrap.style.display = "none";
-  }
-}
 const restoreIncludeExclude = document.getElementById("restore-include-exclude");
 const restoreIncludePaths = document.getElementById("restore-include-paths");
 const restoreExcludePaths = document.getElementById("restore-exclude-paths");
@@ -194,7 +181,6 @@ restoreRepo?.addEventListener("change", () => {
   restoreSnapshot.innerHTML = "<option value=\"\">— Select snapshot —</option>";
   restoreFileListContainer.style.display = "none";
   restoreFileList.innerHTML = "";
-  setRestoreLsCommand("");
   restoreVerifySummary.style.display = "none";
   if (!repo) return;
   loadSnapshotsForRepo(repo);
@@ -258,7 +244,6 @@ restoreFilterMode?.addEventListener("change", () => {
   restoreIncludeExclude.style.display = mode === "none" ? "none" : "grid";
   if (mode === "none") {
     restoreFileListContainer.style.display = "none";
-    setRestoreLsCommand("");
   }
 });
 
@@ -304,17 +289,14 @@ restoreLoadFiles?.addEventListener("click", async () => {
   }
   const searchTerm = document.getElementById("restore-file-search")?.value?.trim() || "";
   restoreFileList.innerHTML = "<span class=\"loading\">Loading…</span>";
-  setRestoreLsCommand("");
   restoreFileListContainer.style.display = "block";
   try {
     const data = await request(
       `/api/recovery/ls?repo=${encodeURIComponent(repo)}&snapshot=${encodeURIComponent(snapshot)}`
     );
     const paths = data.paths || [];
-    setRestoreLsCommand(data.command || "");
     renderFileList(paths, searchTerm);
   } catch (err) {
-    setRestoreLsCommand("");
     restoreFileList.innerHTML = "";
     const errEl = document.createElement("div");
     errEl.className = "error";
@@ -418,7 +400,6 @@ restoreCancelBtn?.addEventListener("click", () => {
   restoreExcludePaths.value = "";
   restoreFileListContainer.style.display = "none";
   restoreFileList.innerHTML = "";
-  setRestoreLsCommand("");
   restoreVerifySummary.style.display = "none";
   restoreVerifySummary.innerHTML = "";
   restoreFrom.dispatchEvent(new Event("change"));

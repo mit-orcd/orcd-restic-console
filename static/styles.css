@@ -339,32 +339,6 @@ pre {
   margin-bottom: 6px;
 }
 
-.restore-ls-command-wrap {
-  margin-bottom: 8px;
-}
-
-.restore-ls-command-label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--notice-fg);
-  margin-bottom: 4px;
-}
-
-.restore-ls-command {
-  margin: 0;
-  padding: 8px 10px;
-  font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-all;
-  border: 1px solid var(--input-border);
-  border-radius: 4px;
-  background: var(--file-list-bg);
-  color: inherit;
-}
-
 .file-list-scroll {
   height: 200px;
   overflow: auto;

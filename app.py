@@ -1,6 +1,5 @@
 import json
 import os
-import shlex
 import sys
 import time
 from functools import wraps
@@ -30,17 +29,6 @@ RECOVERY_ROOTS_PATH = BASE_DIR / "config" / "recovery_roots.yml"
 
 store = ConfigStore(CONFIG_PATH, APP_CONFIG_PATH)
 app_config = store.load_app_config()
-
-
-def _ensure_runtime_data_dirs() -> None:
-    """Create log/job parent dirs if missing (upgrades or fresh trees may omit a prior data/ layout)."""
-    _resolve_app_path(app_config.log_dir).mkdir(parents=True, exist_ok=True)
-    _resolve_app_path(app_config.job_store).parent.mkdir(parents=True, exist_ok=True)
-    if app_config.debug_log_file:
-        _resolve_app_path(app_config.debug_log_file).parent.mkdir(parents=True, exist_ok=True)
-
-
-_ensure_runtime_data_dirs()
 recovery_roots_store = RecoveryRootsStore(RECOVERY_ROOTS_PATH)
 log = setup_app_logging(debug_log_file=app_config.debug_log_file)
 app = Flask(__name__)
@@ -627,7 +615,6 @@ def list_recovery_ls() -> Any:
     if not repo or not snapshot:
         abort(400, "repo and snapshot are required")
     log_path = _log_path(Path(repo).name, "ls")
-    command = " ".join(shlex.quote(a) for a in restic_service.ls_args(repo, snapshot))
     stdout, _ = _ls_with_unlock(repo, snapshot, log_path)
     # restic ls: one path per line (paths start with /)
     paths = []
@@ -635,7 +622,7 @@ def list_recovery_ls() -> Any:
         line = line.strip()
         if line and (line.startswith("/") or line == "/"):
             paths.append(line)
-    return jsonify({"paths": paths, "command": command})
+    return jsonify({"paths": paths})
 
 
 @app.route("/api/recovery/verify", methods=["POST"])
@@ -746,5 +733,6 @@ def create_s3_bucket() -> Any:
 
 
 if __name__ == "__main__":
+    os.makedirs(_resolve_app_path(app_config.log_dir), exist_ok=True)
     debug = os.environ.get("APP_DEBUG") == "1"
     app.run(host=app_config.host, port=app_config.port, debug=debug)
