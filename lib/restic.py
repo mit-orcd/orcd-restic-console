@@ -98,10 +98,13 @@ class ResticService:
         ]
         return run_command(args, log_path)
 
+    def ls_args(self, repo: str, snapshot: str) -> List[str]:
+        """Arguments for `restic … ls <snapshot>` (same as executed by `ls`)."""
+        return self._base_args(repo) + ["ls", snapshot]
+
     def ls(self, repo: str, snapshot: str, log_path: Path) -> Tuple[int, str, str]:
         """List files in snapshot. Stdout is one path per line."""
-        args = self._base_args(repo) + ["ls", snapshot]
-        return run_command(args, log_path)
+        return run_command(self.ls_args(repo, snapshot), log_path)
 
     def restore(
         self,

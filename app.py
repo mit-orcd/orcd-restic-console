@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import sys
 import time
 from functools import wraps
@@ -615,6 +616,7 @@ def list_recovery_ls() -> Any:
     if not repo or not snapshot:
         abort(400, "repo and snapshot are required")
     log_path = _log_path(Path(repo).name, "ls")
+    command = shlex.join(restic_service.ls_args(repo, snapshot))
     stdout, _ = _ls_with_unlock(repo, snapshot, log_path)
     # restic ls: one path per line (paths start with /)
     paths = []
@@ -622,7 +624,7 @@ def list_recovery_ls() -> Any:
         line = line.strip()
         if line and (line.startswith("/") or line == "/"):
             paths.append(line)
-    return jsonify({"paths": paths})
+    return jsonify({"paths": paths, "command": command})
 
 
 @app.route("/api/recovery/verify", methods=["POST"])
