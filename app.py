@@ -2,8 +2,10 @@ import json
 import os
 import sys
 import time
+from collections import OrderedDict
 from functools import wraps
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
@@ -170,13 +172,52 @@ restic_service = ResticService(
         compression=app_config.restic_compression,
         keep_daily=app_config.keep_daily,
         keep_weekly=app_config.keep_weekly,
+        cache_dir=app_config.restic_cache_dir,
     )
 )
+
+# Ensure the persistent restic metadata cache exists (runs under gunicorn too, not just __main__).
+if app_config.restic_cache_dir:
+    try:
+        os.makedirs(app_config.restic_cache_dir, exist_ok=True)
+    except OSError as exc:
+        log.warning("could not create restic cache dir %s: %s", app_config.restic_cache_dir, exc)
 
 
 def _log_path(fs_id: str, action: str) -> Path:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     return _resolve_app_path(app_config.log_dir) / f"{fs_id}-{action}-{stamp}.log"
+
+
+# Memoize recovery `ls` results. A snapshot's tree is immutable for a given ID, so the
+# path list is safe to reuse; this avoids re-spawning restic (and re-reading metadata over
+# the mount) on repeat browsing of the same snapshot. Bounded TTL/LRU keeps memory in check.
+_LS_CACHE_MAXSIZE = 16
+_LS_CACHE_TTL = 600.0
+_ls_cache: "OrderedDict[tuple, tuple]" = OrderedDict()
+_ls_cache_lock = Lock()
+
+
+def _ls_cache_get(key: tuple) -> Optional[tuple]:
+    now = time.time()
+    with _ls_cache_lock:
+        item = _ls_cache.get(key)
+        if item is None:
+            return None
+        ts, value = item
+        if now - ts > _LS_CACHE_TTL:
+            _ls_cache.pop(key, None)
+            return None
+        _ls_cache.move_to_end(key)
+        return value
+
+
+def _ls_cache_put(key: tuple, value: tuple) -> None:
+    with _ls_cache_lock:
+        _ls_cache[key] = (time.time(), value)
+        _ls_cache.move_to_end(key)
+        while len(_ls_cache) > _LS_CACHE_MAXSIZE:
+            _ls_cache.popitem(last=False)
 
 
 def _resolve_repo(fs_entry: dict, dest_entry: dict) -> str:
@@ -595,16 +636,21 @@ def list_recovery_snapshots() -> Any:
 
 
 def _ls_with_unlock(repo: str, snapshot: str, log_path: Path) -> tuple:
-    """Run restic ls; if repo is locked, unlock and retry once."""
-    code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
+    """Stream restic ls into a path list; if repo is locked, unlock and retry once.
+
+    Returns (paths, truncated). Output is streamed (not buffered whole) and capped at
+    ls_max_paths to bound memory on very large repos.
+    """
+    max_paths = app_config.ls_max_paths
+    code, paths, stderr, truncated = restic_service.ls_paths(repo, snapshot, log_path, max_paths)
     if code == 0:
-        return stdout, stderr
+        return paths, truncated
     err = (stderr or "").lower()
     if "lock" in err or "locked" in err:
         restic_service.unlock(repo, log_path)
-        code, stdout, stderr = restic_service.ls(repo, snapshot, log_path)
+        code, paths, stderr, truncated = restic_service.ls_paths(repo, snapshot, log_path, max_paths)
         if code == 0:
-            return stdout, stderr
+            return paths, truncated
     abort(500, stderr or "failed to list snapshot")
 
 
@@ -614,15 +660,17 @@ def list_recovery_ls() -> Any:
     snapshot = request.args.get("snapshot")
     if not repo or not snapshot:
         abort(400, "repo and snapshot are required")
+
+    cache_key = (repo, snapshot)
+    cached = _ls_cache_get(cache_key)
+    if cached is not None:
+        paths, truncated = cached
+        return jsonify({"paths": paths, "truncated": truncated, "cached": True})
+
     log_path = _log_path(Path(repo).name, "ls")
-    stdout, _ = _ls_with_unlock(repo, snapshot, log_path)
-    # restic ls: one path per line (paths start with /)
-    paths = []
-    for line in (stdout or "").splitlines():
-        line = line.strip()
-        if line and (line.startswith("/") or line == "/"):
-            paths.append(line)
-    return jsonify({"paths": paths})
+    paths, truncated = _ls_with_unlock(repo, snapshot, log_path)
+    _ls_cache_put(cache_key, (paths, truncated))
+    return jsonify({"paths": paths, "truncated": truncated, "cached": False})
 
 
 @app.route("/api/recovery/verify", methods=["POST"])

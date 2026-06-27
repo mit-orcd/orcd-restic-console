@@ -15,8 +15,10 @@ class AppConfig:
     restic_binary: str
     restic_password_file: str
     restic_compression: str
+    restic_cache_dir: Optional[str]
     keep_daily: int
     keep_weekly: int
+    ls_max_paths: Optional[int]
     log_dir: str
     job_store: str
     restore_root: str
@@ -62,8 +64,10 @@ class ConfigStore:
             restic_binary=restic.get("binary", "/usr/local/bin/restic"),
             restic_password_file=restic.get("password_file", "/root/.backup_pass"),
             restic_compression=restic.get("compression", "auto"),
+            restic_cache_dir=(restic.get("cache_dir") or None),
             keep_daily=int(restic.get("keep_daily", 14)),
             keep_weekly=int(restic.get("keep_weekly", 2)),
+            ls_max_paths=(int(restic["ls_max_paths"]) if restic.get("ls_max_paths") else None),
             log_dir=paths.get("log_dir", "./data/logs"),
             job_store=paths.get("job_store", "./data/job_history.json"),
             restore_root=paths.get("restore_root", "/mnt/restores"),

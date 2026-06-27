@@ -9,6 +9,13 @@ restic:
   compression: "auto"
   keep_daily: 14
   keep_weekly: 2
+  # Persistent metadata cache on fast flash. Keeps index/tree blobs local so repeat
+  # snapshots/ls don't re-read metadata over the Wasabi mount, and keeps the cache off /.
+  # Empty = restic default (~/.cache/restic).
+  cache_dir: "/stage/restore/console-cache"
+  # Cap paths returned by the recovery "ls" listing to protect memory on huge repos.
+  # Empty/0 = unlimited (the response also flags "truncated": true when the cap is hit).
+  ls_max_paths: 500000
 paths:
   log_dir: "./data/logs"
   # Optional: when APP_DEBUG=1, also append detailed app logs here
