@@ -29,6 +29,14 @@
   --pre-fg: #d4d4d4;
   --status-success: #059669;
   --status-failure: #dc2626;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-fg: #ffffff;
+  --focus-ring: rgba(37, 99, 235, 0.25);
+  --input-hover-border: #9ca3af;
+  --row-hover: #f9fafb;
+  --label-fg: #6b7280;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Cursor Dark */
@@ -62,13 +70,25 @@ body.theme-dark {
   --pre-fg: #d4d4d4;
   --status-success: #89d185;
   --status-failure: #f48771;
+  --accent: #3794ff;
+  --accent-hover: #2b7fe0;
+  --accent-fg: #ffffff;
+  --focus-ring: rgba(55, 148, 255, 0.32);
+  --input-hover-border: #565656;
+  --row-hover: #2d2d2d;
+  --label-fg: #9d9d9d;
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%239d9d9d' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   margin: 0;
   background: var(--body-bg);
   color: var(--body-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 header {
@@ -173,6 +193,16 @@ body.theme-dark .theme-toggle-half-dark {
 
 h1 {
   margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .header-tagline {
@@ -201,9 +231,9 @@ main {
 
 .panel {
   background: var(--panel-bg);
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
   margin-bottom: 24px;
   border: 1px solid var(--panel-border);
 }
@@ -217,13 +247,26 @@ table {
 th,
 td {
   text-align: left;
-  padding: 10px 12px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--table-border);
   vertical-align: top;
 }
 
 th {
   background: var(--table-header-bg);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--label-fg);
+}
+
+tbody tr {
+  transition: background 0.12s ease;
+}
+
+tbody tr:hover {
+  background: var(--row-hover);
 }
 
 .form-row {
@@ -241,33 +284,118 @@ th {
 input,
 select,
 textarea {
-  padding: 8px;
+  padding: 9px 11px;
   border: 1px solid var(--input-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--input-bg);
   color: var(--input-fg);
+  font: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-.btn {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
-  background: #2563eb;
-  color: #fff;
+input,
+select {
+  min-height: 38px;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--input-hover-border);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 32px;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 11px center;
   cursor: pointer;
 }
 
+::placeholder {
+  color: var(--label-fg);
+  opacity: 0.8;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.05s ease;
+}
+
+.btn:hover {
+  background: var(--accent-hover);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .btn-small {
-  padding: 6px 10px;
+  min-height: 0;
+  padding: 7px 12px;
+  font-weight: 500;
   margin-right: 6px;
 }
 
-.btn.danger {
-  background: #dc2626;
+/* Secondary / outline (e.g. Verify) */
+.btn.btn-secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--input-border);
 }
 
+.btn.btn-secondary:hover {
+  background: var(--focus-ring);
+  border-color: var(--accent);
+}
+
+.btn.danger {
+  background: var(--status-failure);
+}
+
+.btn.danger:hover {
+  filter: brightness(0.93);
+}
+
+/* Quiet / ghost (e.g. Reset) */
 .btn.btn-cancel {
-  background: #6b7280;
+  background: transparent;
+  color: var(--body-fg);
+  border-color: var(--input-border);
+}
+
+.btn.btn-cancel:hover {
+  background: var(--row-hover);
+  border-color: var(--input-hover-border);
 }
 
 .restore-form {
@@ -300,15 +428,18 @@ pre {
 }
 
 .restore-panel .form-group label {
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-fg);
 }
 
 .restore-panel .filter-mode {
   flex-direction: row;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
@@ -334,8 +465,11 @@ pre {
 
 .file-list-container label {
   display: block;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-fg);
   margin-bottom: 6px;
 }
 
@@ -374,6 +508,16 @@ pre {
   }
 }
 
+.restore-panel .paths-column label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-fg);
+  margin-bottom: 6px;
+}
+
 .restore-panel .paths-column textarea {
   width: 100%;
   box-sizing: border-box;
@@ -400,6 +544,9 @@ pre {
 .restore-actions {
   display: flex;
   gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--panel-border);
 }
 
 .restore-actions .btn + .btn {
@@ -408,8 +555,11 @@ pre {
 
 .restore-panel .repo-type-label {
   margin-top: 8px;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-fg);
 }
 
 .signed-in-notice {
