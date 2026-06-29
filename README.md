@@ -9,6 +9,15 @@ The primary screen is **Restore**: pick a root → repository → snapshot, opti
 browse the snapshot's file list and set include/exclude paths, then verify and run the
 restore. Recent restore jobs are listed below the form.
 
+## Companion: backup engine
+
+The repositories this console restores from are produced by
+**[orcd-restic-backup](https://github.com/mit-orcd/orcd-restic-backup)**
+(`restic_backup_s3.sh`), which backs up each user directory into its own restic
+repository under `s3://<bucket>/<root>/<user>`, plus `restic_repair.sh` for repair.
+This app is the read/restore side and shares the same restic version, password file
+(`/root/.backup_pass`), repo layout, and `/stage` cache storage.
+
 ## Features
 
 - Browse repositories and snapshots, list a snapshot's files, and restore (optionally
