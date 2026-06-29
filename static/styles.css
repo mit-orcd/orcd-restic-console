@@ -40,7 +40,7 @@
 }
 
 /* Cursor Dark */
-body.theme-dark {
+.theme-dark {
   --panel-bg: #252526;
   --panel-border: #3c3c3c;
   --body-bg: #1e1e1e;
@@ -183,11 +183,11 @@ header {
   fill: #404040;
 }
 
-body.theme-dark .theme-toggle-half-light {
+.theme-dark .theme-toggle-half-light {
   fill: #4a4a4a;
 }
 
-body.theme-dark .theme-toggle-half-dark {
+.theme-dark .theme-toggle-half-dark {
   fill: #d0d0d0;
 }
 

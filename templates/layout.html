@@ -4,6 +4,17 @@
     <meta charset="utf-8">
     <title>ORCD Backups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+      // Apply the saved theme before first paint to avoid a flash of the wrong theme
+      // on navigation. Runs synchronously in <head>, so it targets <html>.
+      (function () {
+        try {
+          if ((localStorage.getItem("backup-panel-theme") || "light") === "dark") {
+            document.documentElement.classList.add("theme-dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body>

@@ -443,7 +443,7 @@ restoreCancelBtn?.addEventListener("click", () => {
   }
 
   function applyTheme(theme) {
-    document.body.classList.toggle("theme-dark", theme === DARK);
+    document.documentElement.classList.toggle("theme-dark", theme === DARK);
   }
 
   function setTheme(theme) {
@@ -457,7 +457,7 @@ restoreCancelBtn?.addEventListener("click", () => {
   if (btn) {
     applyTheme(getStored());
     btn.addEventListener("click", function () {
-      const next = document.body.classList.contains("theme-dark") ? LIGHT : DARK;
+      const next = document.documentElement.classList.contains("theme-dark") ? LIGHT : DARK;
       setTheme(next);
     });
   }
